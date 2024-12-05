@@ -48,6 +48,9 @@ jobs:
                 /repos/${GITHUB_REPOSITORY}/actions/runs \
                 -q ".workflow_runs[] | select(.name == \"$WORKFLOW_NAME\" and .event == \"repository_dispatch\" and .head_branch == \"sync/$TAG_NAME\") | [.id, .status, .conclusion] | @csv" | head -n 1)
               IFS=',' read -r -a RUN_DATA <<< "$RUNS"
+              if [[ -z "$RUN_DATA" ]]; then
+                continue # Continue polling if no run data found
+              fi
               RUN_ID=${RUN_DATA[0]//\"/}
               STATUS=${RUN_DATA[1]//\"/}
               CONCLUSION=${RUN_DATA[2]//\"/}
