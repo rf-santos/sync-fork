@@ -55,10 +55,23 @@ jobs:
           git remote -v
 
           # Create test patch
-          mkdir -p ${GITHUB_WORKSPACE}/test_repos/fork/.github/patches
-          echo "test patch" > ${GITHUB_WORKSPACE}/test_repos/fork/.github/patches/customizations.patch
+          mkdir -p .github/patches
+          echo "diff --git a/custom.txt b/custom.txt
+          index 83db48f..bf3ff12 100644
+          --- a/custom.txt
+          +++ b/custom.txt
+          @@ -1 +1 @@
+          -Custom feature
+          +Updated custom feature" > .github/patches/customizations.patch
           echo "Patch file created at ${GITHUB_WORKSPACE}/test_repos/fork/.github/patches/customizations.patch"
           ls -la ${GITHUB_WORKSPACE}/test_repos/fork/.github/patches/
+
+      - name: Create custom.txt in fork repo
+        run: |
+          cd ${GITHUB_WORKSPACE}/test_repos/fork
+          echo "Custom feature" > custom.txt
+          git add custom.txt
+          git commit -m "Add custom feature"
 
       - name: Debug Print Paths
         run: |

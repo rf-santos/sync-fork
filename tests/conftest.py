@@ -55,6 +55,9 @@ def test_repos(request):
     upstream.index.commit("Add new feature")
     upstream.create_tag("v1.1.0")
     
+    # Verify upstream repo
+    assert upstream_path.exists() and (upstream_path / ".git").exists(), "Upstream repo not initialized correctly"
+    
     # Create fork
     fork_path = base_dir / "fork"
     fork = git.Repo.clone_from(str(upstream_path), fork_path)
@@ -66,5 +69,8 @@ def test_repos(request):
     custom.write_text("Custom feature")
     fork.index.add(["custom.txt"])
     fork.index.commit("Add custom feature")
-
+    
+    # Verify fork repo
+    assert fork_path.exists() and (fork_path / ".git").exists(), "Fork repo not initialized correctly"
+    
     return repos
