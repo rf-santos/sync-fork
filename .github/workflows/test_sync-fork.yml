@@ -29,6 +29,8 @@ jobs:
           
       - name: Create test repositories
         run: |
+          set -e  # Exit on first error
+          
           # Create test upstream repo
           mkdir -p test_repos/upstream
           cd test_repos/upstream
@@ -36,7 +38,7 @@ jobs:
           echo "initial" > file.txt
           git add .
           git commit -m "Initial commit"
-          git tag v1.0.0
+          git tag -f v1.0.0
           
           # Create test fork repo
           cd ..
@@ -51,7 +53,7 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-mock gitpython
+          pip install -r tests/requirements.txt
 
       - name: Run tests
         run: |

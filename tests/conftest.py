@@ -9,11 +9,11 @@ def test_repos(request):
     """Create test repositories for the test session."""
     base_dir = Path(".github/test/repos")
     repos = {}
-
+                
     def cleanup():
-        # Close any open repos
+        # Check if repositories exist before cleanup
         for repo in repos.values():
-            if repo.is_valid():
+            if repo and os.path.exists(repo.working_dir):
                 repo.close()
         
         # Clean up test directory
@@ -54,13 +54,6 @@ def test_repos(request):
     upstream.index.add(["feature.txt"])
     upstream.index.commit("Add new feature")
     upstream.create_tag("v1.1.0")
-    
-    # Add another tag to simulate a new release
-    new_feature = upstream_path / "new_feature.txt"
-    new_feature.write_text("Another new feature")
-    upstream.index.add(["new_feature.txt"])
-    upstream.index.commit("Add another new feature")
-    upstream.create_tag("v1.2.0")
     
     # Create fork
     fork_path = base_dir / "fork"
