@@ -55,6 +55,13 @@ def test_repos(request):
     upstream.index.commit("Add new feature")
     upstream.create_tag("v1.1.0")
     
+    # Add another tag to simulate a new release
+    new_feature = upstream_path / "new_feature.txt"
+    new_feature.write_text("Another new feature")
+    upstream.index.add(["new_feature.txt"])
+    upstream.index.commit("Add another new feature")
+    upstream.create_tag("v1.2.0")
+    
     # Create fork
     fork_path = base_dir / "fork"
     fork = git.Repo.clone_from(str(upstream_path), fork_path)
