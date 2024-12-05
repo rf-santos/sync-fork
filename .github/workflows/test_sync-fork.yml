@@ -18,21 +18,22 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
 
-      - name: Create mock tags
+      - name: Create annotated mock tag
         run: |
           TAG_NAME="mock-tag-$(date +%s)"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-          git tag -a $TAG_NAME -m "Mock upstream release"
+          git tag -a $TAG_NAME -m "Mock upstream release $TAG_NAME"
           git push origin $TAG_NAME
         id: create_tags
 
       - name: Dispatch main workflow
         run: |
-          UPSTREAM_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          UPSTREAM_URL="https://github.com/${GITHUB_REPOSITORY}"
           TAG_NAME="${{ env.TAG_NAME }}"
-          curl -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
-          -d '{"event_type": "test-sync", "client_payload": {"tag": "'"$TAG_NAME"'", "upstream_url": "'"$UPSTREAM_URL"'"}}'
+          curl -X POST -H "Accept: application/vnd.github+json" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
+              -d '{"event_type": "test-sync", "client_payload": {"tag": "'"$TAG_NAME"'", "upstream_url": "'"$UPSTREAM_URL"'"}}'
         id: trigger_main_workflow
 
       - name: Poll main workflow status
