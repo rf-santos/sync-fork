@@ -1,0 +1,119 @@
+name: Sync Fork with Upstream Releases
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-fork:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream ${{ vars.UPSTREAM_REPO_URL }}
+          git fetch upstream --tags
+
+      - name: Get latest release tag
+        id: latest_release
+        run: |
+          LATEST_TAG=$(git ls-remote --tags upstream | sort -t '/' -k 3 -V | tail -n 1 | awk -F/ '{print $3}')
+          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Check if release exists locally
+        id: check_release
+        run: |
+          if git show-ref --tags --quiet --verify -- "refs/tags/${{ steps.latest_release.outputs.LATEST_TAG }}"; then
+            echo "EXISTS=true" >> $GITHUB_OUTPUT
+          else
+            echo "EXISTS=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create sync branch
+        if: steps.check_release.outputs.EXISTS == 'false'
+        run: |
+          git checkout -b sync/${{ steps.latest_release.outputs.LATEST_TAG }}
+          # Try to merge and capture if there are conflicts
+          if git merge ${{ steps.latest_release.outputs.LATEST_TAG }} --no-edit; then
+            echo "MERGE_STATUS=clean" >> $GITHUB_OUTPUT
+          else
+            git merge --abort
+            echo "MERGE_STATUS=conflicts" >> $GITHUB_OUTPUT
+          fi
+        id: merge_attempt
+
+      - name: Apply custom patches
+        if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
+        run: |
+          if [ -f .github/patches/customizations.patch ]; then
+            if git apply --check .github/patches/customizations.patch; then
+              git apply .github/patches/customizations.patch
+              echo "PATCH_STATUS=success" >> $GITHUB_OUTPUT
+            else
+              echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
+            fi
+          fi
+        id: patch_apply
+
+      - name: Create Pull Request
+        if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
+        uses: peter-evans/create-pull-request@v5
+        id: create_pr
+        with:
+          title: 'Sync: Upstream release ${{ steps.latest_release.outputs.LATEST_TAG }}'
+          body: |
+            This PR synchronizes our fork with upstream release ${{ steps.latest_release.outputs.LATEST_TAG }}.
+            
+            - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
+            - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
+            
+            This PR will be automatically merged if there are no conflicts.
+          branch: sync/${{ steps.latest_release.outputs.LATEST_TAG }}
+          base: main
+          labels: sync,automated
+
+      - name: Auto-merge Pull Request
+        if: |
+          steps.create_pr.outputs.pull-request-operation == 'created' && 
+          steps.merge_attempt.outputs.MERGE_STATUS == 'clean' && 
+          steps.patch_apply.outputs.PATCH_STATUS == 'success'
+        run: |
+          gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on Failure
+        if: |
+          failure() || 
+          steps.merge_attempt.outputs.MERGE_STATUS == 'conflicts' || 
+          steps.patch_apply.outputs.PATCH_STATUS == 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              title: '⚠️ Sync failed for release ${{ steps.latest_release.outputs.LATEST_TAG }}',
+              body: `
+                Synchronization with upstream release ${{ steps.latest_release.outputs.LATEST_TAG }} failed.
+                
+                - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
+                - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
+                
+                Manual intervention is required.
+              `
+            });
