@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,12 +21,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-          
+
       - name: Configure Git for tests
         run: |
           git config --global user.name 'Test User'
           git config --global user.email 'test@example.com'
-          
+
       - name: Create test repositories
         run: |
           set -e  # Exit on first error
@@ -39,21 +39,33 @@ jobs:
           git add .
           git commit -m "Initial commit"
           git tag -f v1.0.0
+          echo "Upstream repository created at $(pwd)"
           
           # Create test fork repo
           cd ..
           git clone ./upstream fork
           cd fork
           git remote add upstream ../upstream
+          echo "Fork repository created at $(pwd)"
           
           # Create test patch
-          mkdir -p .github/patches
-          echo "test patch" > .github/patches/customizations.patch
+          mkdir -p ${GITHUB_WORKSPACE}/.github/test/repos/fork/.github/patches
+          echo "test patch" > ${GITHUB_WORKSPACE}/.github/test/repos/fork/.github/patches/customizations.patch
+          echo "Patch file created at ${GITHUB_WORKSPACE}/.github/test/repos/fork/.github/patches/customizations.patch"
+
+      - name: Debug Print Paths
+        run: |
+          echo "Listing all directories and files in the workspace"
+          ls -R ${GITHUB_WORKSPACE}/test_repos
+          echo "Listing all directories and files in fork repo"
+          ls -R ${GITHUB_WORKSPACE}/test_repos/fork
+          echo "Listing all directories and files in fork patches directory"
+          ls -R ${GITHUB_WORKSPACE}/.github/test/repos/fork/.github/patches
 
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
+          pip install pytest pytest-mock gitpython PyGithub
 
       - name: Run tests
         run: |
