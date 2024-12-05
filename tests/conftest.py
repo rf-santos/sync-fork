@@ -7,7 +7,7 @@ import os
 @pytest.fixture(scope="session")
 def test_repos(request):
     """Create test repositories for the test session."""
-    base_dir = Path(".github/test/repos")
+    base_dir = Path("test/repos")
     repos = {}
                 
     def cleanup():
