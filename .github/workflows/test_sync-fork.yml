@@ -31,7 +31,7 @@ jobs:
           UPSTREAM_URL="https://github.com/${GITHUB_REPOSITORY}.git"
           TAG_NAME="${{ env.TAG_NAME }}"
           curl -X POST -H "Accept: application/vnd.github+json" -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches \
           -d '{"event_type": "test-sync", "client_payload": {"tag": "'"$TAG_NAME"'", "upstream_url": "'"$UPSTREAM_URL"'"}}'
         id: trigger_main_workflow
 
@@ -44,22 +44,19 @@ jobs:
           poll_for_workflow_run() {
             while true; do
               RUNS=$(gh api -H "Accept: application/vnd.github+json" \
-                /repos/${{ github.repository }}/actions/runs \
-                -q ".workflow_runs[] | select(.name == \"$WORKFLOW_NAME\" and .event == \"repository_dispatch\" and .head_branch == \"sync/$TAG_NAME\") | [.id, .status, .conclusion] | @csv")
-              IFS=$'\n'
-              for RUN in $RUNS; do
-                IFS=',' read -r -a RUN_DATA <<< "$RUN"
-                RUN_ID=${RUN_DATA[0]//\"/}
-                STATUS=${RUN_DATA[1]//\"/}
-                CONCLUSION=${RUN_DATA[2]//\"/}
-                
-                if [[ "$STATUS" == "completed" ]]; then
-                  echo "Workflow completed with conclusion: $CONCLUSION"
-                  echo "RUN_STATUS=$STATUS" >> $GITHUB_ENV
-                  echo "RUN_CONCLUSION=$CONCLUSION" >> $GITHUB_ENV
-                  return
-                fi
-              done
+                /repos/${GITHUB_REPOSITORY}/actions/runs \
+                -q ".workflow_runs[] | select(.name == \"$WORKFLOW_NAME\" and .event == \"repository_dispatch\" and .head_branch == \"sync/$TAG_NAME\") | [.id, .status, .conclusion] | @csv" | head -n 1)
+              IFS=',' read -r -a RUN_DATA <<< "$RUNS"
+              RUN_ID=${RUN_DATA[0]//\"/}
+              STATUS=${RUN_DATA[1]//\"/}
+              CONCLUSION=${RUN_DATA[2]//\"/}
+
+              if [[ "$STATUS" == "completed" ]]; then
+                echo "Workflow completed with conclusion: $CONCLUSION"
+                echo "RUN_STATUS=$STATUS" >> $GITHUB_ENV
+                echo "RUN_CONCLUSION=$CONCLUSION" >> $GITHUB_ENV
+                return
+              fi
               sleep 10
             done
           }

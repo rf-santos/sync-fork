@@ -13,6 +13,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+
     steps:
       - name: Checkout fork
         uses: actions/checkout@v4
@@ -24,7 +25,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-
+          
       - name: Set Upstream Repo URL
         run: echo "UPSTREAM_REPO_URL=${{ github.event.client_payload.upstream_url || vars.UPSTREAM_REPO_URL }}" >> $GITHUB_ENV
 
@@ -38,6 +39,22 @@ jobs:
         run: |
           LATEST_TAG=$(git ls-remote --tags upstream | sort -t '/' -k 3 -V | tail -n 1 | awk -F/ '{print $3}')
           echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Create or update customizations.patch
+        run: |
+          # Get the previous upstream release tag
+          PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$(git ls-remote --tags upstream | cut -f2 | grep -o '[^/]*$' | sort -rV | head -n 1)" | head -n 1)
+          echo "PREVIOUS_TAG=${PREVIOUS_TAG}"
+
+          # Checkout the previous upstream release to a temporary branch
+          git checkout ${PREVIOUS_TAG} -b temp-branch
+
+          # Diff the temporary branch with main to create or update the customizations.patch
+          git diff temp-branch..main > .github/patches/customizations.patch
+
+          # Cleanup
+          git checkout main
+          git branch -D temp-branch
 
       - name: Check if release exists locally
         id: check_release
@@ -63,9 +80,14 @@ jobs:
       - name: Apply custom patches
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
         run: |
-          if [ -f .github/patches/customizations.patch ]; then
-            if git apply --check .github/patches/customizations.patch; then
-              git apply .github/patches/customizations.patch
+          PATCH_FILE=".github/patches/customizations.patch"
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.action }}" = "test-sync" ]; then
+            PATCH_FILE=".github/patches/test-customizations.patch"
+          fi
+
+          if [ -f $PATCH_FILE ]; then
+            if git apply --check $PATCH_FILE; then
+              git apply $PATCH_FILE
               echo "PATCH_STATUS=success" >> $GITHUB_OUTPUT
             else
               echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
