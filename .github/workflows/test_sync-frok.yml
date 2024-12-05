@@ -1,0 +1,61 @@
+name: Test Sync Fork Workflow
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          
+      - name: Configure Git for tests
+        run: |
+          git config --global user.name 'Test User'
+          git config --global user.email 'test@example.com'
+          
+      - name: Create test repositories
+        run: |
+          # Create test upstream repo
+          mkdir -p test_repos/upstream
+          cd test_repos/upstream
+          git init
+          echo "initial" > file.txt
+          git add .
+          git commit -m "Initial commit"
+          git tag v1.0.0
+          
+          # Create test fork repo
+          cd ..
+          git clone ./upstream fork
+          cd fork
+          git remote add upstream ../upstream
+          
+          # Create test patch
+          mkdir -p .github/patches
+          echo "test patch" > .github/patches/customizations.patch
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-mock gitpython
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TEST_REPOS_PATH: ${{ github.workspace }}/test_repos
