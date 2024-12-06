@@ -33,11 +33,11 @@ jobs:
         run: |
           UPSTREAM_URL="https://github.com/${GITHUB_REPOSITORY}"
           TAG_NAME="${{ env.TAG_NAME }}"
+          echo "{ \"event_type\": \"test-sync\", \"client_payload\": { \"tag\": \"${TAG_NAME}\", \"upstream_url\": \"${UPSTREAM_URL}\" }}" > payload.json
           gh api \
-            -X POST \
+            --method POST \
             /repos/${GITHUB_REPOSITORY}/dispatches \
-            -f event_type=test-sync \
-            --raw-field client_payload="{\"tag\":\"${TAG_NAME}\",\"upstream_url\":\"${UPSTREAM_URL}\"}"
+            --input payload.json
 
       - name: Poll main workflow status
         id: poll_status
