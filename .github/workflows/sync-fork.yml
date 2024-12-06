@@ -81,7 +81,9 @@ jobs:
           LATEST_TAG: ${{ env.LATEST_TAG }}
           PREVIOUS_TAG: ${{ env.PREVIOUS_TAG }}
         run: |
-          git checkout -b sync-${LATEST_TAG}
+          BRANCH_NAME="sync-${LATEST_TAG}"
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          git checkout -b $BRANCH_NAME
           if git merge ${LATEST_TAG} --no-edit; then
             echo "MERGE_STATUS=clean" >> $GITHUB_OUTPUT
           else
@@ -112,13 +114,13 @@ jobs:
         uses: peter-evans/create-pull-request@v5
         id: create_pr
         with:
-          title: 'Sync: Upstream release ${{ steps.latest_release.outputs.LATEST_TAG }}'
+          title: 'Sync: Upstream release ${{ env.LATEST_TAG }}'
           body: |
-            This PR synchronizes our fork with upstream release ${{ steps.latest_release.outputs.LATEST_TAG }}.
+            This PR synchronizes our fork with upstream release ${{ env.LATEST_TAG }}.
             - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
             - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
             This PR will be automatically merged if there are no conflicts.
-          branch: sync/${{ steps.latest_release.outputs.LATEST_TAG }}
+          branch: ${{ env.BRANCH_NAME }}
           base: main
           labels: sync,automated
 
