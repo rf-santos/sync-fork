@@ -34,24 +34,32 @@ jobs:
           git remote add upstream ${{ env.UPSTREAM_REPO_URL }}
           git fetch upstream --tags
 
-      - name: Get latest release tag
-        id: latest_release
+      - name: Get latest and previous tags
+        id: get_tags
         run: |
-          LATEST_TAG=$(git ls-remote --tags upstream | tail -n 1 | awk -F/ '{print $3}')
+          # Get all tags from upstream sorted by creation date (newest first)
+          TAGS=($(git ls-remote --tags --refs upstream | awk -F/ '{print $3}' | sort -V -r))
+          
+          # Get latest and previous tags
+          LATEST_TAG="${TAGS[0]}"
+          PREVIOUS_TAG="${TAGS[1]}"
+          
+          # Output tags for debugging
+          echo "Latest tag: ${LATEST_TAG}"
+          echo "Previous tag: ${PREVIOUS_TAG}"
+          
+          # Set environment variables
           echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+          echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> $GITHUB_ENV
 
       - name: Create or update customizations.patch
         run: |
-          # Get the previous upstream release tag
-          PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$(git ls-remote --tags upstream | tail -n 1 | awk -F/ '{print $3}')" | head -n 1)
-          echo "PREVIOUS_TAG=${PREVIOUS_TAG}"
-
           # Checkout the previous upstream release to a temporary branch
           git checkout ${PREVIOUS_TAG} -b temp-branch
-
-          # Diff the temporary branch with main to create or update the customizations.patch
+      
+          # Diff the temporary branch with main to create patch
           git diff temp-branch..main > .github/patches/customizations.patch
-
+      
           # Cleanup
           git checkout main
           git branch -D temp-branch
