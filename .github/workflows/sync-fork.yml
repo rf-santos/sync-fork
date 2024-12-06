@@ -54,28 +54,22 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
-          # Backup existing patch file if it exists
-          PATCH_FILE=".github/patches/customizations.patch"
-          if [ -f "$PATCH_FILE" ]; then
-            mv "$PATCH_FILE" "${PATCH_FILE}.bak"
-          fi
+          # Ensure patches directory exists
+          mkdir -p .github/patches
 
+          # Remove existing patch file
+          PATCH_FILE=".github/patches/customizations.patch"
+          rm -f "$PATCH_FILE"
+          
           # Create temp branch from previous (original) tag
           git checkout ${PREVIOUS_TAG} -b temp-branch
-
+          
           # Create patch by diffing original against customized
           git diff temp-branch main > "$PATCH_FILE"
-
+          
           # Return to main and cleanup
           git checkout main
-          git branch -D temp-branch
-
-          # If backup exists and new patch is empty, restore backup
-          if [ -f "${PATCH_FILE}.bak" ] && [ ! -s "$PATCH_FILE" ]; then
-            mv "${PATCH_FILE}.bak" "$PATCH_FILE"
-          else
-            rm -f "${PATCH_FILE}.bak"
-          fi
+          git branch -D temp-branch || true
 
       - name: Check if release exists locally
         id: check_release
