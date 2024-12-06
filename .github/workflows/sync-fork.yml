@@ -54,19 +54,23 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
-          # Ensure patches directory exists
+          BRANCH_NAME="sync-${LATEST_TAG}"
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+
+          git checkout -b sync-${LATEST_TAG}
+          
           mkdir -p .github/patches
           
-          # Checkout the previous upstream release to a temporary branch
-          git checkout ${PREVIOUS_TAG} -b temp-branch || exit 1
+          # Create temporary branch
+          git branch temp-branch $PREVIOUS_TAG || exit 1
           
           # Create the patch file
           git diff temp-branch..main > .github/patches/customizations.patch
           
-          # Switch to main and commit the patch
-          git checkout main || exit 1
           git add .github/patches/customizations.patch
           git commit -m "chore: update customizations patch file" || echo "No changes to commit"
+          git push origin sync-${LATEST_TAG}
+          git checkout main
           
           # Clean up temp branch
           git branch -D temp-branch || true
@@ -87,9 +91,8 @@ jobs:
           UPSTREAM_REPO_URL: ${{ env.UPSTREAM_REPO_URL }}
           LATEST_TAG: ${{ env.LATEST_TAG }}
           PREVIOUS_TAG: ${{ env.PREVIOUS_TAG }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
         run: |
-          BRANCH_NAME="sync-${LATEST_TAG}"
-          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
           git checkout -b $BRANCH_NAME
           if git merge ${LATEST_TAG} --no-edit; then
             echo "MERGE_STATUS=clean" >> $GITHUB_OUTPUT
