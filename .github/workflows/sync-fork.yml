@@ -141,12 +141,26 @@ jobs:
           delete-branch: true
           push-to-fork: ''
 
+      - name: Debug Auto-merge Conditions
+        if: always()
+        run: |
+          echo "PR Operation: ${{ steps.create_pr.outputs.pull-request-operation }}"
+          echo "Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}"
+          echo "Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}"
+          echo "PR Number: ${{ steps.create_pr.outputs.pull-request-number }}"
+          
+          # Print condition evaluation
+          echo "Condition 1 (PR created): ${{ steps.create_pr.outputs.pull-request-operation == 'created' }}"
+          echo "Condition 2 (Clean merge): ${{ steps.merge_attempt.outputs.MERGE_STATUS == 'clean' }}"
+          echo "Condition 3 (Patch success): ${{ steps.patch_apply.outputs.PATCH_STATUS == 'success' }}"
+        
       - name: Auto-merge Pull Request
         if: |
           steps.create_pr.outputs.pull-request-operation == 'created' && 
           steps.merge_attempt.outputs.MERGE_STATUS == 'clean' && 
           steps.patch_apply.outputs.PATCH_STATUS == 'success'
         run: |
+          echo "Attempting to merge PR #${{ steps.create_pr.outputs.pull-request-number }}"
           gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
