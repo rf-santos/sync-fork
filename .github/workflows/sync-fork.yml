@@ -79,6 +79,7 @@ jobs:
           else
             echo "EXISTS=false" >> $GITHUB_OUTPUT
           fi
+          echo "Exists: $EXISTS"
 
       - name: Attempt merge
         id: merge_attempt
@@ -98,6 +99,7 @@ jobs:
             git merge --abort
             echo "MERGE_STATUS=conflicts" >> $GITHUB_OUTPUT
           fi
+          echo "Merge Status: $MERGE_STATUS"
 
       - name: Apply custom patches
         id: patch_apply
@@ -115,6 +117,7 @@ jobs:
               echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
             fi
           fi
+          echo "Patch Status: $PATCH_STATUS"
 
       - name: Push changes
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
