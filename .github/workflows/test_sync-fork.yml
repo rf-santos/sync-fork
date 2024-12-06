@@ -41,6 +41,7 @@ jobs:
             --method POST \
             /repos/${GITHUB_REPOSITORY}/dispatches \
             --input payload.json
+          rm -f payload.json
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,6 +55,12 @@ jobs:
         run: |
           pip install PyGithub
           python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ github.repository }}"
+          STATUS=$?
+          if [ $STATUS -eq 0 ]; then
+            echo "RUN_CONCLUSION=success" >> $GITHUB_ENV
+          else
+            echo "RUN_CONCLUSION=failure" >> $GITHUB_ENV
+          fi
 
       - name: Verify main workflow success
         if: env.RUN_CONCLUSION != 'success'
