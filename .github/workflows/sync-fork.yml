@@ -57,6 +57,9 @@ jobs:
           # Ensure patches directory exists
           mkdir -p .github/patches
 
+          # Stash any existing changes first
+          git stash -u
+
           # Remove existing patch file
           PATCH_FILE=".github/patches/customizations.patch"
           rm -f "$PATCH_FILE"
@@ -70,6 +73,9 @@ jobs:
           # Return to main and cleanup
           git checkout main
           git branch -D temp-branch || true
+
+          # Pop stashed changes if any
+          git stash pop || true
 
       - name: Check if release exists locally
         id: check_release
