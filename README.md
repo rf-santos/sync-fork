@@ -1,55 +1,71 @@
-# Fork synchronization workflow
-Boilerplate CI/CD to sync an upstream fork.
+# Fork Synchronization Workflow
+Automatically sync your fork with upstream releases while preserving your customizations.
 
-# Setup
+## Features
+- Daily automatic sync checks
+- Custom patch preservation
+- Automated PR creation and merging
+- Built-in test workflow
 
-## Initial Setup
-
-1. Fork the repository on GitHub
-2. Create a `.github/workflows` directory in your fork
-3. Save the workflow file as `.github/workflows/sync-fork.yml`
-4. Create a `.github/patches` directory to store your customizations
-5. Add the upstream repository URL as a repository variable named `UPSTREAM_REPO_URL`
-6. Make sure your repository has the necessary permissions enabled:
-   1. Go to Settings → Actions → General
-   2. Under "Workflow permissions", enable "Read and write permissions"
-
-
-## Managing Customizations
-
-1. Create a patch file of your customizations:
-```bash
-git diff main...your-customization-branch > .github/patches/customizations.patch
-```
-
-2. Store this patch file in your repository. The workflow will automatically attempt to apply these customizations after each sync
-
-
-# How it Works:
-
-The workflow runs daily and can also be triggered manually
-It checks for new releases in the upstream repository
-When a new release is detected, it:
-
-- Creates a new branch
-- Merges the release
-- Applies your customizations
-- Creates a pull request for review
-- Automatically merge the PR if all checks pass
-
-# Repository Strucutre
+## Setup
+1. Repository Configuration
 
 ```
+# Required repository secrets
+UPSTREAM_REPO_URL=https://github.com/original/repo.git
 
+# Enable workflow permissions
+Settings → Actions → General → "Read and write permissions"
+```
+
+2. Directory Structure
+
+```
 .github/
 ├── workflows/
-│   └── sync-fork.yml
-└── patches/
-    └── customizations.patch
-tests/
-├── __init__.py
-├── conftest.py
-├── test_sync_workflow.py
-├── test_github_integration.py
-└── test_notifications.py
+│   ├── sync-fork.yml      
+│   └── test_sync-fork.yml 
+├── patches/
+│   ├── customizations.patch
+│   └── test-customizaitons.patch
+├── scripts/
+│   └── poll_workflow.py
+└── test/
+    └── test-patch.md
 ```
+
+## Workflow Steps
+1. Schedule: Daily or manual trigger
+2. Check: Monitor upstream releases
+3. Branch: Create sync branch
+4. Sync: Merge latest release
+5. Customize: Apply patches
+6. Review: Create PR
+7. Merge: Auto-merge if checks pass
+
+## Testing
+
+```
+# Via GitHub UI
+Actions → Test Sync Workflow → Run workflow
+
+# Test workflow will:
+- Create mock tags
+- Trigger sync
+- Apply test patches
+- Cleanup
+```
+
+## Error Handling
+- Merge conflicts: Manual resolution required
+- Failed patches: Reported in PR
+- Status updates: Actions tab
+
+## Troubleshooting
+- Check Actions logs
+- Verify UPSTREAM_REPO_URL
+- Validate patch format
+- Review permissions
+
+## License
+GNU GPL v3
