@@ -53,7 +53,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install PyGithub
-          python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ env.TAG_NAME }}" "${{ github.repository }}"
+          python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ github.repository }}"
 
       - name: Verify main workflow success
         if: env.RUN_CONCLUSION != 'success'
