@@ -54,28 +54,15 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
-          # Ensure patches directory exists
-          mkdir -p .github/patches
-
-          # Stash any existing changes first
-          git stash -u
-
-          # Remove existing patch file
-          PATCH_FILE=".github/patches/customizations.patch"
-          rm -f "$PATCH_FILE"
-          
-          # Create temp branch from previous (original) tag
+          # Checkout the previous upstream release to a temporary branch
           git checkout ${PREVIOUS_TAG} -b temp-branch
-          
-          # Create patch by diffing original against customized
-          git diff temp-branch main > "$PATCH_FILE"
-          
-          # Return to main and cleanup
+      
+          # Diff the temporary branch with main to create patch
+          git diff temp-branch..main > .github/patches/customizations.patch
+      
+          # Cleanup
           git checkout main
-          git branch -D temp-branch || true
-
-          # Pop stashed changes if any
-          git stash pop || true
+          git branch -D temp-branch
 
       - name: Check if release exists locally
         id: check_release
