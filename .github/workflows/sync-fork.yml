@@ -54,21 +54,28 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
-          # Stash any uncommitted changes
-          git stash push
+          # Backup existing patch file if it exists
+          PATCH_FILE=".github/patches/customizations.patch"
+          if [ -f "$PATCH_FILE" ]; then
+            mv "$PATCH_FILE" "${PATCH_FILE}.bak"
+          fi
 
           # Create temp branch from previous (original) tag
           git checkout ${PREVIOUS_TAG} -b temp-branch
 
           # Create patch by diffing original against customized
-          git diff temp-branch main > .github/patches/customizations.patch
+          git diff temp-branch main > "$PATCH_FILE"
 
           # Return to main and cleanup
           git checkout main
           git branch -D temp-branch
 
-          # Pop stashed changes if any
-          git stash pop || true
+          # If backup exists and new patch is empty, restore backup
+          if [ -f "${PATCH_FILE}.bak" ] && [ ! -s "$PATCH_FILE" ]; then
+            mv "${PATCH_FILE}.bak" "$PATCH_FILE"
+          else
+            rm -f "${PATCH_FILE}.bak"
+          fi
 
       - name: Check if release exists locally
         id: check_release
@@ -154,14 +161,27 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const issue = await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.name,
-              title: '⚠️ Sync failed for release ${{ steps.latest_release.outputs.LATEST_TAG }}',
-              body: `
-                Synchronization with upstream release ${{ steps.latest_release.outputs.LATEST_TAG }} failed.
-                - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
-                - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
-                Manual intervention is required.
-              `
-            });
+            try {
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                title: `⚠️ Sync failed for release ${process.env.LATEST_TAG}`,
+                body: `### Sync Failure Report
+                
+                Synchronization with upstream release \`${process.env.LATEST_TAG}\` failed.
+                
+                **Details:**
+                - Merge Status: \`${process.env.MERGE_STATUS || 'N/A'}\`
+                - Patch Status: \`${process.env.PATCH_STATUS || 'N/A'}\`
+                
+                ⚠️ Manual intervention is required.`
+              });
+              console.log(`Created issue #${issue.data.number}`);
+            } catch (error) {
+              console.error('Failed to create issue:', error);
+              throw error;
+            }
+        env:
+          LATEST_TAG: ${{ env.LATEST_TAG }}
+          MERGE_STATUS: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
+          PATCH_STATUS: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
