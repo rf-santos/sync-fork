@@ -42,13 +42,16 @@ jobs:
             /repos/${GITHUB_REPOSITORY}/dispatches \
             --input payload.json
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
       - name: Poll main workflow status
         id: poll_status
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x .github/scripts/poll-workflow.sh
-          .github/scripts/poll-workflow.sh "${{ env.WORKFLOW_NAME }}" "${{ env.TAG_NAME }}" "${{ github.repository }}"
+        run: python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ env.TAG_NAME }}" "${{ github.repository }}"
 
       - name: Verify main workflow success
         if: env.RUN_CONCLUSION != 'success'
