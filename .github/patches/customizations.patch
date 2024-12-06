@@ -1,3 +1,168 @@
+diff --git a/.github/patches/customizations.patch b/.github/patches/customizations.patch
+index e69de29..3f4d174 100644
+--- a/.github/patches/customizations.patch
++++ b/.github/patches/customizations.patch
+@@ -0,0 +1,160 @@
++diff --git a/.github/scripts/poll_workflow.py b/.github/scripts/poll_workflow.py
++index aeba05f..d555342 100644
++--- a/.github/scripts/poll_workflow.py
+++++ b/.github/scripts/poll_workflow.py
++@@ -2,64 +2,62 @@
++ import os
++ import sys
++ import time
++-import requests
++ from datetime import datetime, timedelta
+++from github import Github
+++from github.GithubException import GithubException
++ 
++-def poll_workflow(workflow_name, tag_name, repo):
++-    token = os.environ['GITHUB_TOKEN']
++-    headers = {
++-        'Accept': 'application/vnd.github+json',
++-        'Authorization': f'Bearer {token}'
++-    }
++-    
++-    # Initial delay
++-    time.sleep(15)
++-    
++-    start_time = datetime.now()
++-    max_duration = timedelta(minutes=5)
++-    
++-    while datetime.now() - start_time < max_duration:
++-        url = f'https://api.github.com/repos/{repo}/actions/runs'
++-        response = requests.get(url, headers=headers)
+++def poll_workflow(workflow_name, repo):
+++    try:
+++        gh = Github(os.environ['GITHUB_TOKEN'])
+++        repository = gh.get_repo(repo)
++         
++-        if response.status_code != 200:
++-            print(f"API request failed: {response.status_code}")
++-            print(response.text)
++-            sys.exit(1)
++-            
++-        data = response.json()
+++        # Initial delay to allow workflow to start
+++        time.sleep(15)
++         
++-        # Find relevant workflow runs
++-        runs = [
++-            run for run in data['workflow_runs']
++-            if run['name'] == workflow_name 
++-            and run['event'] == 'repository_dispatch'
++-        ]
+++        start_time = datetime.now()
+++        max_duration = timedelta(minutes=5)
++         
++-        if not runs:
++-            print("No matching workflow runs found. Waiting...")
+++        while datetime.now() - start_time < max_duration:
+++            runs = repository.get_workflow_runs(
+++                event='repository_dispatch'
+++            )
+++            
+++            matching_runs = [
+++                run for run in runs
+++                if run.name == workflow_name
+++            ]
+++            
+++            if not matching_runs:
+++                print("No matching workflow runs found. Waiting...")
+++                time.sleep(10)
+++                continue
+++                
+++            latest_run = matching_runs[0]
+++            print(f"Latest run - Status: {latest_run.status}, Conclusion: {latest_run.conclusion}")
+++            
+++            if latest_run.status == 'completed':
+++                if latest_run.conclusion == 'success':
+++                    print("Workflow completed successfully")
+++                    return 0
+++                elif latest_run.conclusion:
+++                    print(f"Workflow failed with conclusion: {latest_run.conclusion}")
+++                    return 1
+++                    
++             time.sleep(10)
++-            continue
++             
++-        latest_run = runs[0]
++-        print(f"Latest run - Status: {latest_run['status']}, Conclusion: {latest_run['conclusion']}")
+++        print("Timeout reached while waiting for workflow completion")
+++        return 1
++         
++-        if latest_run['status'] == 'completed':
++-            if latest_run['conclusion'] == 'success':
++-                print("Workflow completed successfully")
++-                sys.exit(0)
++-            elif latest_run['conclusion']:
++-                print(f"Workflow failed with conclusion: {latest_run['conclusion']}")
++-                sys.exit(1)
++-                
++-        time.sleep(10)
++-    
++-    print("Timeout reached while waiting for workflow completion")
++-    sys.exit(1)
+++    except GithubException as e:
+++        print(f"GitHub API error: {e}")
+++        return 1
+++    except Exception as e:
+++        print(f"Unexpected error: {e}")
+++        return 1
++ 
++ if __name__ == '__main__':
++-    if len(sys.argv) != 4:
++-        print("Usage: poll_workflow.py WORKFLOW_NAME TAG_NAME REPO")
+++    if len(sys.argv) != 3:
+++        print("Usage: poll_workflow.py WORKFLOW_NAME REPO")
++         sys.exit(1)
++         
++-    poll_workflow(sys.argv[1], sys.argv[2], sys.argv[3])
++\ No newline at end of file
+++    sys.exit(poll_workflow(sys.argv[1], sys.argv[2]))
++\ No newline at end of file
++diff --git a/.github/workflows/test_sync-fork.yml b/.github/workflows/test_sync-fork.yml
++index f813458..22cac3c 100644
++--- a/.github/workflows/test_sync-fork.yml
+++++ b/.github/workflows/test_sync-fork.yml
++@@ -51,7 +51,9 @@ jobs:
++         id: poll_status
++         env:
++           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++-        run: python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ env.TAG_NAME }}" "${{ github.repository }}"
+++        run: |
+++          pip install PyGithub
+++          python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ github.repository }}"
++ 
++       - name: Verify main workflow success
++         if: env.RUN_CONCLUSION != 'success'
++@@ -60,17 +62,18 @@ jobs:
++           exit 1
++ 
++       - name: Cleanup tags and branches
+++        if: always()
++         run: |
++           # Reset test patch file
++-          echo "No patch applied" > .github/test/repos/upstream/test-patch.md
++-          git add .github/test/repos/upstream/test-patch.md
++-          git config --global user.name 'GitHub Actions'
++-          git config --global user.email 'actions@github.com'
++-          git commit -m "test: reset test patch file"
++-          git push origin main
+++          echo "No patch applied" > .github/test/repos/upstream/test-patch.md || true
+++          git add .github/test/repos/upstream/test-patch.md || true
+++          git config --global user.name 'GitHub Actions' || true
+++          git config --global user.email 'actions@github.com' || true
+++          git commit -m "test: reset test patch file" || true
+++          git push origin main || true
++       
++           # Cleanup tags and branches
++           TAG_NAME="${{ env.TAG_NAME }}"
++-          git push origin :refs/tags/$TAG_NAME
+++          git push origin :refs/tags/$TAG_NAME || true
++           git branch -D sync-$TAG_NAME || true
++           git push origin --delete sync-$TAG_NAME || true
++\ No newline at end of file
 diff --git a/.github/scripts/poll_workflow.py b/.github/scripts/poll_workflow.py
 index aeba05f..d555342 100644
 --- a/.github/scripts/poll_workflow.py
@@ -116,11 +281,120 @@ index aeba05f..d555342 100644
 \ No newline at end of file
 +    sys.exit(poll_workflow(sys.argv[1], sys.argv[2]))
 \ No newline at end of file
+diff --git a/.github/workflows/sync-fork.yml b/.github/workflows/sync-fork.yml
+index 3d22140..9c14d83 100644
+--- a/.github/workflows/sync-fork.yml
++++ b/.github/workflows/sync-fork.yml
+@@ -54,15 +54,22 @@ jobs:
+ 
+       - name: Create or update customizations.patch
+         run: |
+-          # Checkout the previous upstream release to a temporary branch
+-          git checkout ${PREVIOUS_TAG} -b temp-branch
+-      
+-          # Diff the temporary branch with main to create patch
+-          git diff temp-branch..main > .github/patches/customizations.patch
+-      
+-          # Cleanup
+           git checkout main
+-          git branch -D temp-branch
++          
++          mkdir -p .github/patches
++          
++          # Create temporary branch
++          git branch temp-branch $PREVIOUS_TAG || exit 1
++          
++          # Create the patch file
++          git diff temp-branch..main > .github/patches/customizations.patch
++          
++          git add .github/patches/customizations.patch
++          git commit -m "chore: update customizations patch file" || echo "No changes to commit"
++          git push origin main
++          
++          # Clean up temp branch
++          git branch -D temp-branch || true
+ 
+       - name: Check if release exists locally
+         id: check_release
+@@ -83,6 +90,7 @@ jobs:
+         run: |
+           BRANCH_NAME="sync-${LATEST_TAG}"
+           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
++
+           git checkout -b $BRANCH_NAME
+           if git merge ${LATEST_TAG} --no-edit; then
+             echo "MERGE_STATUS=clean" >> $GITHUB_OUTPUT
+@@ -92,7 +100,7 @@ jobs:
+           fi
+ 
+       - name: Apply custom patches
+-        if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
++        id: patch_apply
+         run: |
+           PATCH_FILE=".github/patches/customizations.patch"
+           if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.action }}" = "test-sync" ]; then
+@@ -107,7 +115,6 @@ jobs:
+               echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
+             fi
+           fi
+-        id: patch_apply
+ 
+       - name: Push changes
+         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
+@@ -149,14 +156,27 @@ jobs:
+         uses: actions/github-script@v7
+         with:
+           script: |
+-            const issue = await github.rest.issues.create({
+-              owner: context.repo.owner,
+-              repo: context.repo.name,
+-              title: '⚠️ Sync failed for release ${{ steps.latest_release.outputs.LATEST_TAG }}',
+-              body: `
+-                Synchronization with upstream release ${{ steps.latest_release.outputs.LATEST_TAG }} failed.
+-                - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
+-                - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
+-                Manual intervention is required.
+-              `
+-            });
+\ No newline at end of file
++            try {
++              const issue = await github.rest.issues.create({
++                owner: context.repo.owner,
++                repo: context.repo.name,
++                title: `⚠️ Sync failed for release ${process.env.LATEST_TAG}`,
++                body: `### Sync Failure Report
++                
++                Synchronization with upstream release \`${process.env.LATEST_TAG}\` failed.
++                
++                **Details:**
++                - Merge Status: \`${process.env.MERGE_STATUS || 'N/A'}\`
++                - Patch Status: \`${process.env.PATCH_STATUS || 'N/A'}\`
++                
++                ⚠️ Manual intervention is required.`
++              });
++              console.log(`Created issue #${issue.data.number}`);
++            } catch (error) {
++              console.error('Failed to create issue:', error);
++              throw error;
++            }
++        env:
++          LATEST_TAG: ${{ env.LATEST_TAG }}
++          MERGE_STATUS: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
++          PATCH_STATUS: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
+\ No newline at end of file
 diff --git a/.github/workflows/test_sync-fork.yml b/.github/workflows/test_sync-fork.yml
-index f813458..22cac3c 100644
+index f813458..7197da2 100644
 --- a/.github/workflows/test_sync-fork.yml
 +++ b/.github/workflows/test_sync-fork.yml
-@@ -51,7 +51,9 @@ jobs:
+@@ -41,6 +41,7 @@ jobs:
+             --method POST \
+             /repos/${GITHUB_REPOSITORY}/dispatches \
+             --input payload.json
++          rm -f payload.json
+ 
+       - name: Set up Python
+         uses: actions/setup-python@v5
+@@ -51,7 +52,15 @@ jobs:
          id: poll_status
          env:
            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,10 +402,16 @@ index f813458..22cac3c 100644
 +        run: |
 +          pip install PyGithub
 +          python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ github.repository }}"
++          STATUS=$?
++          if [ $STATUS -eq 0 ]; then
++            echo "RUN_CONCLUSION=success" >> $GITHUB_ENV
++          else
++            echo "RUN_CONCLUSION=failure" >> $GITHUB_ENV
++          fi
  
        - name: Verify main workflow success
          if: env.RUN_CONCLUSION != 'success'
-@@ -60,17 +62,18 @@ jobs:
+@@ -60,17 +69,18 @@ jobs:
            exit 1
  
        - name: Cleanup tags and branches
@@ -144,7 +424,7 @@ index f813458..22cac3c 100644
 -          git config --global user.email 'actions@github.com'
 -          git commit -m "test: reset test patch file"
 -          git push origin main
-+          echo "No patch applied" > .github/test/repos/upstream/test-patch.md || true
++          echo "No patch applied" > .github/test/test-patch.md || true
 +          git add .github/test/repos/upstream/test-patch.md || true
 +          git config --global user.name 'GitHub Actions' || true
 +          git config --global user.email 'actions@github.com' || true
