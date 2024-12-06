@@ -84,6 +84,7 @@ jobs:
         if: always()
         run: |
           # Reset test patch file
+          git checkout main
           echo "No patch applied" > .github/test/test-patch.md || true
           git add .github/test/repos/upstream/test-patch.md || true
           git config --global user.name 'GitHub Actions' || true
