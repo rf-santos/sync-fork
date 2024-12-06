@@ -79,7 +79,7 @@ jobs:
           else
             echo "EXISTS=false" >> $GITHUB_OUTPUT
           fi
-          echo "Exists: $EXISTS"
+          echo "Output: $GITHUB_OUTPUT"
 
       - name: Attempt merge
         id: merge_attempt
@@ -99,7 +99,7 @@ jobs:
             git merge --abort
             echo "MERGE_STATUS=conflicts" >> $GITHUB_OUTPUT
           fi
-          echo "Merge Status: $MERGE_STATUS"
+          echo "Output: $GITHUB_OUTPUT"
 
       - name: Apply custom patches
         id: patch_apply
@@ -117,7 +117,7 @@ jobs:
               echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
             fi
           fi
-          echo "Patch Status: $PATCH_STATUS"
+          echo "Output: $GITHUB_OUTPUT"
 
       - name: Push changes
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
@@ -150,36 +150,3 @@ jobs:
           gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Notify on Failure
-        if: |
-          failure() || 
-          steps.merge_attempt.outputs.MERGE_STATUS == 'conflicts' || 
-          steps.patch_apply.outputs.PATCH_STATUS == 'failed'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              const issue = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.name,
-                title: `⚠️ Sync failed for release ${process.env.LATEST_TAG}`,
-                body: `### Sync Failure Report
-                
-                Synchronization with upstream release \`${process.env.LATEST_TAG}\` failed.
-                
-                **Details:**
-                - Merge Status: \`${process.env.MERGE_STATUS || 'unknown'}\`
-                - Patch Status: \`${process.env.PATCH_STATUS || 'unknown'}\`
-                
-                ⚠️ Manual intervention is required.`
-              });
-              console.log(`Created issue #${issue.data.number}`);
-            } catch (error) {
-              console.error('Failed to create issue:', error);
-              core.setFailed(error.message);
-            }
-        env:
-          LATEST_TAG: ${{ env.LATEST_TAG }}
-          MERGE_STATUS: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
-          PATCH_STATUS: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
