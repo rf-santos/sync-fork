@@ -166,15 +166,15 @@ jobs:
                 Synchronization with upstream release \`${process.env.LATEST_TAG}\` failed.
                 
                 **Details:**
-                - Merge Status: \`${process.env.MERGE_STATUS || 'N/A'}\`
-                - Patch Status: \`${process.env.PATCH_STATUS || 'N/A'}\`
+                - Merge Status: \`${process.env.MERGE_STATUS || 'unknown'}\`
+                - Patch Status: \`${process.env.PATCH_STATUS || 'unknown'}\`
                 
                 ⚠️ Manual intervention is required.`
               });
               console.log(`Created issue #${issue.data.number}`);
             } catch (error) {
               console.error('Failed to create issue:', error);
-              throw error;
+              core.setFailed(error.message);
             }
         env:
           LATEST_TAG: ${{ env.LATEST_TAG }}

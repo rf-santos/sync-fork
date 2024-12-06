@@ -59,5 +59,9 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print("Usage: poll_workflow.py WORKFLOW_NAME REPO")
         sys.exit(1)
-        
-    sys.exit(poll_workflow(sys.argv[1], sys.argv[2]))
+
+    result = poll_workflow(sys.argv[1], sys.argv[2])
+    print(f"Workflow result: {result}")
+    if result != 0:
+        print("Triggered workflow failed...")
+        sys.exit(1)

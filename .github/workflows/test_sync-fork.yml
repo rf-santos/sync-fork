@@ -67,26 +67,14 @@ jobs:
         run: |
           pip install PyGithub
           python .github/scripts/poll_workflow.py "${{ env.WORKFLOW_NAME }}" "${{ github.repository }}"
-          STATUS=$?
-          if [ $STATUS -eq 0; then
-            echo "RUN_CONCLUSION=success" >> $GITHUB_ENV
-          else
-            echo "RUN_CONCLUSION=failure" >> $GITHUB_ENV
-          fi
-
-      - name: Verify main workflow success
-        if: env.RUN_CONCLUSION != 'success'
-        run: |
-          echo "Main workflow failed. Exiting..."
-          exit 1
-
+          
       - name: Cleanup tags and branches
         if: always()
         run: |
           # Reset test patch file
           git checkout main
           echo "No patch applied" > .github/test/test-patch.md || true
-          git add .github/test/repos/upstream/test-patch.md || true
+          git add .github/test/test-patch.md || true
           git config --global user.name 'GitHub Actions' || true
           git config --global user.email 'actions@github.com' || true
           git commit -m "test: reset test patch file" || true
