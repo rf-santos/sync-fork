@@ -54,15 +54,22 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
+          # Ensure patches directory exists
+          mkdir -p .github/patches
+          
           # Checkout the previous upstream release to a temporary branch
-          git checkout ${PREVIOUS_TAG} -b temp-branch
-      
-          # Diff the temporary branch with main to create patch
+          git checkout ${PREVIOUS_TAG} -b temp-branch || exit 1
+          
+          # Create the patch file
           git diff temp-branch..main > .github/patches/customizations.patch
-      
-          # Cleanup
-          git checkout main
-          git branch -D temp-branch
+          
+          # Switch to main and commit the patch
+          git checkout main || exit 1
+          git add .github/patches/customizations.patch
+          git commit -m "chore: update customizations patch file" || echo "No changes to commit"
+          
+          # Clean up temp branch
+          git branch -D temp-branch || true
 
       - name: Check if release exists locally
         id: check_release
