@@ -54,15 +54,21 @@ jobs:
 
       - name: Create or update customizations.patch
         run: |
-          # Checkout the previous upstream release to a temporary branch
+          # Stash any uncommitted changes
+          git stash push
+
+          # Create temp branch from previous (original) tag
           git checkout ${PREVIOUS_TAG} -b temp-branch
-      
-          # Diff the temporary branch with main to create patch
-          git diff temp-branch..main > .github/patches/customizations.patch
-      
-          # Cleanup
+
+          # Create patch by diffing original against customized
+          git diff temp-branch main > .github/patches/customizations.patch
+
+          # Return to main and cleanup
           git checkout main
           git branch -D temp-branch
+
+          # Pop stashed changes if any
+          git stash pop || true
 
       - name: Check if release exists locally
         id: check_release
@@ -92,7 +98,7 @@ jobs:
           fi
 
       - name: Apply custom patches
-        if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
+        id: patch_apply
         run: |
           PATCH_FILE=".github/patches/customizations.patch"
           if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.action }}" = "test-sync" ]; then
@@ -107,7 +113,6 @@ jobs:
               echo "PATCH_STATUS=failed" >> $GITHUB_OUTPUT
             fi
           fi
-        id: patch_apply
 
       - name: Push changes
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
