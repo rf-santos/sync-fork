@@ -9,7 +9,7 @@ ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
   RUNS=$(gh api -H "Accept: application/vnd.github+json" \
     /repos/${GITHUB_REPOSITORY}/actions/runs \
-    -q ".workflow_runs[] | select(.name == \"$WORKFLOW_NAME\" and .event == \"repository_dispatch\" and .head_branch == \"sync/$TAG_NAME\") | [.id, .status, .conclusion] | @csv" | head -n 1)
+    -q ".workflow_runs[] | select(.name == \"$WORKFLOW_NAME\" and .event == \"repository_dispatch\") | [.id, .status, .conclusion] | @csv" | head -n 1)
   
   if [[ -z "$RUNS" ]]; then
     echo "No workflow run found. Attempt $ATTEMPT of $MAX_ATTEMPTS"
