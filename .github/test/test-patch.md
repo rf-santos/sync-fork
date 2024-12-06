@@ -1,1 +1,1 @@
-Patch applied successfully
+No patch applied
