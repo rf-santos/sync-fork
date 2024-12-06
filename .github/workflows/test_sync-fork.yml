@@ -55,11 +55,22 @@ jobs:
 
       - name: Verify main workflow success
         if: env.RUN_CONCLUSION != 'success'
-        run: exit 1
+        run: |
+          echo "Main workflow failed. Exiting..."
+          exit 1
 
       - name: Cleanup tags and branches
         run: |
+          # Reset test patch file
+          echo "No patch applied" > .github/test/repos/upstream/test-patch.md
+          git add .github/test/repos/upstream/test-patch.md
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git commit -m "test: reset test patch file"
+          git push origin main
+      
+          # Cleanup tags and branches
           TAG_NAME="${{ env.TAG_NAME }}"
           git push origin :refs/tags/$TAG_NAME
-          git branch -D sync/$TAG_NAME || true
-          git push origin --delete sync/$TAG_NAME || true
+          git branch -D sync-$TAG_NAME || true
+          git push origin --delete sync-$TAG_NAME || true
