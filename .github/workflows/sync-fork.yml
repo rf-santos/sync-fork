@@ -154,6 +154,36 @@ jobs:
           echo "Condition 2 (Clean merge): ${{ steps.merge_attempt.outputs.MERGE_STATUS == 'clean' }}"
           echo "Condition 3 (Patch success): ${{ steps.patch_apply.outputs.PATCH_STATUS == 'success' }}"
         
+      - name: Create Issue for Manual Resolution
+        if: |
+          steps.merge_attempt.outputs.MERGE_STATUS != 'clean' || 
+          steps.patch_apply.outputs.PATCH_STATUS != 'success'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueBody = `
+            ### Sync Fork Conflict Detection
+            
+            Manual intervention needed to sync fork with upstream release ${{ env.LATEST_TAG }}.
+            
+            **Debug Information:**
+            - Merge Status: ${{ steps.merge_attempt.outputs.MERGE_STATUS }}
+            - Patch Status: ${{ steps.patch_apply.outputs.PATCH_STATUS }}
+            - Branch Name: ${{ env.BRANCH_NAME }}
+            
+            Please resolve the conflicts manually and sync the fork.
+            
+            > This issue was automatically created by the sync-fork workflow.
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Manual Resolution Needed: Fork Sync Conflicts for ${process.env.LATEST_TAG}`,
+              body: issueBody,
+              labels: ['sync', 'conflict', 'needs-attention']
+            });
+
       - name: Auto-merge Pull Request
         if: |
           steps.create_pr.outputs.pull-request-operation == 'created' && 
