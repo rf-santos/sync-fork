@@ -37,8 +37,8 @@ jobs:
       - name: Get latest release tag
         id: latest_release
         run: |
-          LATEST_TAG=$(git ls-remote --tags upstream | sort -t '/' -k 3 -V | tail -n 1 | awk -F/ '{print $3}')
-          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          LATEST_TAG=$(git ls-remote --tags upstream | tail -n 1 | awk -F/ '{print $3}')
+          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
 
       - name: Create or update customizations.patch
         run: |
