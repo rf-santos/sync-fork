@@ -109,6 +109,11 @@ jobs:
           fi
         id: patch_apply
 
+      - name: Push changes
+        if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
+        run: |
+          git push origin ${{ env.BRANCH_NAME }}
+
       - name: Create Pull Request
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
         uses: peter-evans/create-pull-request@v5
@@ -123,6 +128,8 @@ jobs:
           branch: ${{ env.BRANCH_NAME }}
           base: main
           labels: sync,automated
+          delete-branch: true
+          push-to-fork: ''
 
       - name: Auto-merge Pull Request
         if: |
