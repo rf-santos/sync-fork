@@ -11,7 +11,7 @@ Automatically sync your fork with upstream releases while preserving your custom
 1. Repository Configuration
 
 ```
-# Required repository secrets
+# Required repository variables
 UPSTREAM_REPO_URL=https://github.com/original/repo.git
 
 # Enable workflow permissions
@@ -42,6 +42,7 @@ Settings → Actions → General → "Read and write permissions"
 5. Customize: Apply patches
 6. Review: Create PR
 7. Merge: Auto-merge if checks pass
+8. Issue: Create an issue for conflict resolution
 
 ## Testing
 
