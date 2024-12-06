@@ -4,6 +4,4 @@ index 9c24fd3..0d1d230 100644
 +++ b/.github/test/test-patch.md
 @@ -1 +1 @@
 -No patch applied
-\ No newline at end of file
 +Patch applied successfully
-\ No newline at end of file
