@@ -73,17 +73,21 @@ jobs:
             echo "EXISTS=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create sync branch
+      - name: Attempt merge
+        id: merge_attempt
         if: steps.check_release.outputs.EXISTS == 'false'
+        env:
+          UPSTREAM_REPO_URL: ${{ env.UPSTREAM_REPO_URL }}
+          LATEST_TAG: ${{ env.LATEST_TAG }}
+          PREVIOUS_TAG: ${{ env.PREVIOUS_TAG }}
         run: |
-          git checkout -b sync/${{ steps.latest_release.outputs.LATEST_TAG }}
-          if git merge ${{ steps.latest_release.outputs.LATEST_TAG }} --no-edit; then
+          git checkout -b sync-${LATEST_TAG}
+          if git merge ${LATEST_TAG} --no-edit; then
             echo "MERGE_STATUS=clean" >> $GITHUB_OUTPUT
           else
             git merge --abort
             echo "MERGE_STATUS=conflicts" >> $GITHUB_OUTPUT
           fi
-        id: merge_attempt
 
       - name: Apply custom patches
         if: steps.check_release.outputs.EXISTS == 'false' && steps.merge_attempt.outputs.MERGE_STATUS == 'clean'
